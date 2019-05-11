@@ -2,8 +2,6 @@
 # Imitation Game
 # Spring 2019 
 
-
-# EGOISTS = 1, HOOLIGANS = 0
 import random
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,8 +9,6 @@ import statistics as st
 from scipy import stats
 import matplotlib.mlab as mlab
 import math
-
-DEBUG = False
 
 def compareArrays(array1, array2):
     if len(array1) != len(array2):
@@ -25,52 +21,36 @@ def compareArrays(array1, array2):
         return True
 
 def game(N, C):
+    # this array will hold all the communities throughout the simulation
     allRounds = []
+    # create initial community with uniform distribution of Altuists and Egoists
     commCurrent = createInitialCommunity(N)
+    # calculate the payoffs of each agent in the community
     payoffs = calculatePayoffs(commCurrent, C)
+    # add the community to the array of all communities
     allRounds.append(commCurrent)
 
-    if DEBUG:
-        print("Community 0: ", commCurrent)
-
-    # for j in range(3):
+    # run the simulation until we have a stable state (blinking or not)
     for j in range(2):
         payoffs = calculatePayoffs(commCurrent, C)
         commCurrent = createNextCommunity(commCurrent, payoffs)
         allRounds.append(commCurrent)
-        if DEBUG:
-            print("Community", j + 1, ": ", commCurrent)
 
-    i = 3
     i = 2
     while not(compareArrays(allRounds[i], allRounds[(i-2)])):
         payoffs = calculatePayoffs(commCurrent, C)
         commCurrent = createNextCommunity(commCurrent, payoffs)
         allRounds.append(commCurrent)
-        if DEBUG:
-            print("Community", i + 1, ": ", commCurrent)
         i += 1
-    if DEBUG:
-        print("Community", i + 1, ": ", commCurrent)
-        print("start check")
-        print(i, ": ", allRounds[i%len(allRounds)])
-        print(i - 2, ": ", allRounds[(i-2)%len(allRounds)])
-        print("end check")
-        print("Simulation Over in ", i, "rounds")
 
-    # output = (N - sum(commCurrent))/N
-    # return sum(commCurrent)
     if compareArrays(allRounds[i], allRounds[(i-1)]):
-        #print("not blinking")
         blink = False
         num = sum(allRounds[i])
 
-    else: #if compareArrays(allRounds[i], allRounds[(i-2)]):
+    else: 
         blink = True
         num = (sum(allRounds[i]) + sum(allRounds[(i-1)])) / 2
 
-    print(allRounds)
-    print(len(allRounds))
     return allRounds[i], allRounds[(i-1)], allRounds[(i-2)], blink, num, i
 
 
@@ -85,8 +65,7 @@ def createInitialCommunity(N):
         else:
             # add a hooligan to the community 
             community.append(0)
-    if DEBUG:
-        print("Simulation Begin")
+
     return community
 
 
@@ -119,10 +98,8 @@ def createNextCommunity(community, payoffs):
     for i in range(len(payoffs)):
         totalE = []
         totalH = []
-        i = i % N
-        # leftNeighbor = (i-1) % N
-        # rightNeighbor = (i+1) % N
-        for j in range((i-1)%N, (i+2)%N):
+        x = [(i-1)%N, i, (i+1)%N]
+        for j in x:
             if community[j] == 1:
                 totalE.append(payoffs[j])
             else:
@@ -138,35 +115,8 @@ def createNextCommunity(community, payoffs):
             community2.append(0)
     return community2
 
-def percentHool(N):
-    popSize = []
-    percentHool = []
-    for i in range(100):
-      popSize.append(i)
-      percentHool.append(game(N, 1/4))
-
-    plt.scatter(popSize, percentHool)
-    plt.title("% Hooligans for Population Size " + str(N))
-    plt.xlabel("Number of Simulation")
-    plt.ylabel("% Hooligans")
-    plt.show()
-
-def percentHoolC(N):
-    costs = [.1, .2, .3, .4, .5, .6, .7, .8, .9]
-    avgPercentHool = []
-    for j in costs: 
-        percentHool = []
-        for i in range(100):
-          percentHool.append(game(N, j)) 
-
-        avgPercentHool.append(st.mean(percentHool))
-
-    plt.scatter(costs, avgPercentHool)
-    plt.title("% Hooligans for Population Size " + str(N))
-    plt.xlabel("Enjoyment Cost of Being a Hooligan ")
-    plt.ylabel("% Hooligans")
-    plt.show()
-
+''' This method will generate a graph of 1000 simulation to verify that the %
+of Altruists in the final state is at least 60%'''
 def Egoists60(N):
     threshold = N * .6
     simCount = 1000
@@ -174,28 +124,106 @@ def Egoists60(N):
     numGame = []
     for i in range(simCount):
         numGame.append(i)
-        comm1, comm2, comm3, blink, num, i = game2(N, 1/4)
+        comm1, comm2, comm3, blink, num, i = game(N, 1/4)
         num = math.ceil(num)
         results.append(num)
-        # if num > 47:
-        #     print("num = ", num)
-        #     print("blinking = ", blink)
-        #     print("Comm 3", comm1)
-        #     print("Comm 2", comm2)
-        #     print("Comm 1", comm3)
-
-            # print("Comm 3", comm2, "sum = ", sum(comm2))
-
+    average = st.mean(results)
     plt.scatter(numGame, results)
     plt.axhline(y=threshold, color='r', linestyle='-')
+    plt.axhline(y=average, color='purple', linestyle='-')
     plt.title("Prop 1 Verification")
     plt.xlabel("Number of Simulation")
     plt.ylabel("Percent of Egoism in Final Stable State")
     plt.show()
 
+''' This method creates a line of best fit'''
+def bestFit(X, Y):
+    xbar = sum(X)/len(X)
+    ybar = sum(Y)/len(Y)
+    n = len(X) # or len(Y)
+
+    numer = sum([xi*yi for xi,yi in zip(X, Y)]) - n * xbar * ybar
+    denum = sum([xi**2 for xi in X]) - n * xbar**2
+
+    b = numer / denum
+    a = ybar - b * xbar
+
+    print('best fit line:\ny = {:.2f} + {:.2f}x'.format(a, b))
+
+    return a, b
+
+''' This method will generate a graph of rounds until stable state is reached
+as a function of N'''
+def roundsTilStable():
+    simCount = 100
+    results = []
+    x = []
+    for j in range(10, 220, 10):
+        popSize = []
+        res = []
+        for i in range(simCount):
+            popSize.append(i)
+            comm1, comm2, comm3, blink, num, i = game(j, 1/4)
+            res.append(i)
+        results.append(st.mean(res))
+        x.append(j)
+
+    a, b = bestFit(x, results)
+    yfit = [a + b * xi for xi in x]
+
+    x = np.array(x)
+    results = np.array(results)
+    z= np.polyfit(x, results, 2)
+    z = z.tolist()
+    a = z[0]
+    b = z[1]
+    c = z[2]
+    best_fit = a*(x**2) + b*x + c
+
+    plt.plot(x.tolist(), results.tolist(), 'bo', x, best_fit, 'g', x, yfit, 'r')
+    plt.title("Rounds Until Stable State as a Function of N")
+    plt.xlabel("N")
+    plt.ylabel("Rounds Til Final Stable State")
+    plt.show()
+
+''' This method will generate a graph of % of simulations that converge to all Hooliganism
+as a function of N'''
+def allHooliganism():
+    simCount = 100
+    results = []
+    x = []
+    for j in range(2, 200, 10):
+        popSize = []
+        res = []
+        for i in range(simCount):
+            popSize.append(i)
+            comm1, comm2, comm3, blink, num, i = game(j, 1/4)
+            if sum(comm1) == 0:
+                res.append(1)
+                # x.append(j)
+        results.append(sum(res)/simCount)
+        x.append(j)
+        
+    x = np.array(x)
+    results = np.array(results)
+    z= np.polyfit(x, results, 2)
+    z = z.tolist()
+    a = z[0]
+    b = z[1]
+    c = z[2]
+    best_fit = a*(x**2) + b*x + c
+
+    plt.plot(x.tolist(), results.tolist(), 'bo', x, best_fit, 'g',)
+    plt.title("Percent of Simulations that Converge to All Hooliganism")
+    plt.xlabel("N")
+    plt.ylabel("Percent of Hooliganism")
+    plt.show()        
+
 def main():
     #Egoists60(101)
-    game(21, 1/4)
-
+    #roundsTilStable()
+    allHooliganism()
+    #game(101, 1/4)
+    
 main()
 
